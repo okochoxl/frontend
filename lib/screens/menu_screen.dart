@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'practice_screen.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({Key? key}) : super(key: key);
@@ -61,6 +62,12 @@ class _MenuButton extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         // TODO: 각 모드별 화면으로 이동
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PracticeScreen(category: item.title),
+          ),
+        );
       },
       child: Column(
         children: [

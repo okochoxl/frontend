@@ -34,6 +34,7 @@ dependencies:
   speech_to_text: ^7.0.0      # 음성 인식
   camera: ^0.10.0             # 영상 녹화
   video_player: ^2.5.1        # 결과 영상 재생
+  path_provider: ^2.0.15    # 파일 경로 제공
 
   
 
@@ -69,6 +70,7 @@ flutter:
     - assets/images/medical_treatment.png
     - assets/images/pharmacy.png
     - assets/images/custom.png
+    - assets/images/avatar_placeholder.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
