@@ -30,6 +30,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  provider: ^6.0.5
+  speech_to_text: ^7.0.0      # 음성 인식
+  camera: ^0.10.0             # 영상 녹화
+  video_player: ^2.5.1        # 결과 영상 재생
+
+  
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -56,6 +62,13 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/images/gapear.png
+    - assets/images/psychiatry.png
+    - assets/images/medical_treatment.png
+    - assets/images/pharmacy.png
+    - assets/images/custom.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
