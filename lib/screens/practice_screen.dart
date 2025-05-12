@@ -15,7 +15,7 @@ class PracticeScreen extends StatefulWidget {
 
 class _PracticeScreenState extends State<PracticeScreen> {
   bool isVoiceMode = true; // 음성 인식 모드
-  
+
   // Speech-to-text
   late stt.SpeechToText _speech;
   bool _speechEnabled = false;
@@ -26,24 +26,32 @@ class _PracticeScreenState extends State<PracticeScreen> {
   List<CameraDescription>? _cameras;
   XFile? _videoFile;
 
+  // 동적으로 상황별 문장 설정
+  late String _prompt;
 
-  static const String _prompt =
-      'Your voice matters,\nno matter how it is heard.';
+  final Map<String, String> promptMap = {
+    'Psychiatry': "I’ve been having trouble sleeping.",
+    'Medical Treatment': "My stomach really hurts.",
+    'Pharmacy': "My throat hurts and I have a cough.",
+    'Custom': "Your voice matters,\nno matter how it is heard.",
+  };
+
   @override
   void initState() {
     super.initState();
     _initSpeech();
     _initCameras();
+    _prompt =
+        promptMap[widget.category] ??
+        "Your voice matters,\nno matter how it is heard.";
   }
 
-  // 음성 인식 초기화
   Future<void> _initSpeech() async {
     _speech = stt.SpeechToText();
     _speechEnabled = await _speech.initialize();
     setState(() {});
   }
 
-  // 카메라 초기화
   Future<void> _initCameras() async {
     _cameras = await availableCameras();
     if (_cameras!.isNotEmpty) {
@@ -57,45 +65,46 @@ class _PracticeScreenState extends State<PracticeScreen> {
     }
   }
 
-  // 음성 녹음 시작/종료
-  void _startListening() => _speech.listen(onResult: (val) {
-    setState(() => _lastWords = val.recognizedWords);
-  });
+  void _startListening() => _speech.listen(
+    onResult: (val) {
+      setState(() => _lastWords = val.recognizedWords);
+    },
+  );
+
   void _stopListening() async {
     await _speech.stop();
     _goToResult(originalText: _prompt, userText: _lastWords);
   }
 
-  // 비디오 녹화 시작
   void _startVideoRecording() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+    if (_cameraController == null || !_cameraController!.value.isInitialized)
+      return;
     if (!_cameraController!.value.isRecordingVideo) {
       await _cameraController!.startVideoRecording();
     }
   }
 
-  // 비디오 녹화 종료
   void _stopVideoRecording() async {
-    if (_cameraController == null || !_cameraController!.value.isRecordingVideo) return;
+    if (_cameraController == null || !_cameraController!.value.isRecordingVideo)
+      return;
     XFile file = await _cameraController!.stopVideoRecording();
     setState(() => _videoFile = file);
-    // 나중에 재생하거나 서버에 업로드할 파일 경로 file.path
     _goToResult(
       originalText: _prompt,
       userText: '[비디오 녹화 완료]\n파일 경로: ${file.path}',
     );
   }
 
-  // 결과 화면으로 이동
   void _goToResult({required String originalText, required String userText}) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => ResultScreen(
-          originalText: originalText,
-          userText: userText,
-          category: widget.category,
-        ),
+        builder:
+            (_) => ResultScreen(
+              originalText: originalText,
+              userText: userText,
+              category: widget.category,
+            ),
       ),
     );
   }
@@ -105,12 +114,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
     _cameraController?.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.category),           // ← 카테고리명
+        title: Text(widget.category),
         centerTitle: true,
         backgroundColor: const Color(0xFFFAF7FF),
         foregroundColor: Colors.black87,
@@ -129,42 +138,39 @@ class _PracticeScreenState extends State<PracticeScreen> {
               borderRadius: BorderRadius.circular(8),
               color: Colors.white,
             ),
-            child: const Text(
-                _prompt,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16,height: 1.4),
+            child: Text(
+              _prompt,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, height: 1.4),
+            ),
+          ),
+          const SizedBox(height: 24),
+          GestureDetector(
+            onTapDown: (_) {
+              if (isVoiceMode) {
+                _startListening();
+              } else {
+                _startVideoRecording();
+              }
+            },
+            onTapUp: (_) {
+              if (isVoiceMode) {
+                _stopListening();
+              } else {
+                _stopVideoRecording();
+              }
+            },
+            child: CircleAvatar(
+              radius: 48,
+              backgroundColor: Colors.grey.shade200,
+              child: Icon(
+                isVoiceMode ? Icons.mic : Icons.videocam,
+                size: 40,
+                color: Colors.black54,
               ),
             ),
-          // 마이크 / 카메라 버튼
-          const SizedBox(height: 24),
-            GestureDetector(
-  onTapDown: (_) {
-    if (isVoiceMode) {
-      _startListening();
-    } else {
-      _startVideoRecording();  // (추후 구현할 비디오 녹화 시작 함수)
-    }
-  },
-  onTapUp: (_) {
-    if (isVoiceMode) {
-      _stopListening();
-    } else {
-      _stopVideoRecording();   // (추후 구현할 비디오 녹화 종료 함수)
-    }
-  },
-  child: CircleAvatar(
-    radius: 48,
-    backgroundColor: Colors.grey.shade200,
-    child: Icon(
-      // ← 아이콘을 모드에 따라 바꿉니다
-      isVoiceMode ? Icons.mic : Icons.videocam,
-      size: 40,
-      color: Colors.black54,
-    ),
-  ),
-),
+          ),
           const SizedBox(height: 28),
-          // Voice / Video 토글
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 24),
             decoration: BoxDecoration(
@@ -177,7 +183,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   child: TextButton(
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: isVoiceMode ? const Color(0xFFE7E0F8) : null,
+                      backgroundColor:
+                          isVoiceMode ? const Color(0xFFE7E0F8) : null,
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.horizontal(
                           left: Radius.circular(30),
@@ -190,10 +197,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                       children: [
                         if (isVoiceMode) const Icon(Icons.check, size: 18),
                         const SizedBox(width: 6),
-                        const Text(
-                          'VOICE',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                        const Text('VOICE', style: TextStyle(fontSize: 16)),
                       ],
                     ),
                   ),
@@ -202,7 +206,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   child: TextButton(
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: !isVoiceMode ? const Color(0xFFE7E0F8) : null,
+                      backgroundColor:
+                          !isVoiceMode ? const Color(0xFFE7E0F8) : null,
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.horizontal(
                           right: Radius.circular(30),
@@ -215,10 +220,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                       children: [
                         if (!isVoiceMode) const Icon(Icons.check, size: 18),
                         const SizedBox(width: 6),
-                        const Text(
-                          'VIDEO',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                        const Text('VIDEO', style: TextStyle(fontSize: 16)),
                       ],
                     ),
                   ),
