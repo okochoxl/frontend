@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:io';  // File 때문에 import 했지만, Web 분기 내부에서만 사용
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;  // 추가
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -40,7 +41,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
   void initState() {
     super.initState();
     _initSpeech();
-    _initCameras();
+    // Web이면 카메라 초기화 아예 안 함
+    if (!kIsWeb) {
+      _initCameras();
+    }
     _prompt =
         promptMap[widget.category] ??
         "Your voice matters,\nno matter how it is heard.";
@@ -53,6 +57,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 
   Future<void> _initCameras() async {
+    // 모바일(Android/iOS)인 경우에만 실행
+    if (kIsWeb) return;
+
     _cameras = await availableCameras();
     if (_cameras!.isNotEmpty) {
       _cameraController = CameraController(
@@ -65,49 +72,112 @@ class _PracticeScreenState extends State<PracticeScreen> {
     }
   }
 
-  void _startListening() => _speech.listen(
-    onResult: (val) {
-      setState(() => _lastWords = val.recognizedWords);
-    },
-  );
-
-  void _stopListening() async {
-    await _speech.stop();
-    _goToResult(originalText: _prompt, userText: _lastWords);
-  }
-
-  void _startVideoRecording() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized)
-      return;
+// 녹화 시작
+Future<void> _startVideoRecording() async {
+    if (kIsWeb) return;  // Web에선 스킵
+    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
     if (!_cameraController!.value.isRecordingVideo) {
       await _cameraController!.startVideoRecording();
     }
   }
 
+
+void _startListening() async {
+  if (!_speechEnabled) return;
+  await _speech.listen(
+    onResult: (val) {
+      setState(() {
+        _lastWords = val.recognizedWords;  // 여기에 인식된 문장(텍스트)이 들어옴
+      });
+    },
+  );
+}
+  void _stopListening() async {
+  await _speech.stop();
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ResultScreen(
+        category: widget.category,
+        originalText: _prompt,
+        userText: _lastWords,
+        isVoiceMode: true,
+        aiGuideAsset: 'assets/videos/ai_guide.mp4', // AI 가이드 비디오(없으면 null)
+              ),
+    ),
+  );
+}
+
+// 녹화 종료
   void _stopVideoRecording() async {
-    if (_cameraController == null || !_cameraController!.value.isRecordingVideo)
+    if (kIsWeb) {
+      // Web일 때는 간단히 결과 화면으로 이동
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ResultScreen(
+            category: widget.category,
+            originalText: _prompt,
+            userText: '[Web: video not supported]',
+            isVoiceMode: false,
+            aiGuideAsset: null,
+          ),
+        ),
+      );
       return;
+    }
+
+    if (_cameraController == null || !_cameraController!.value.isRecordingVideo) {
+      return;
+    }
     XFile file = await _cameraController!.stopVideoRecording();
     setState(() => _videoFile = file);
-    _goToResult(
-      originalText: _prompt,
-      userText: '[비디오 녹화 완료]\n파일 경로: ${file.path}',
-    );
-  }
 
-  void _goToResult({required String originalText, required String userText}) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder:
-            (_) => ResultScreen(
-              originalText: originalText,
-              userText: userText,
-              category: widget.category,
-            ),
+        builder: (_) => ResultScreen(
+          category: widget.category,
+          originalText: _prompt,
+          userText: file.path,
+          isVoiceMode: false,
+          aiGuideAsset: 'assets/videos/ai_guide.mp4',
+        ),
       ),
     );
   }
+  // 3) 여기에 _startSession() 추가
+  /// VOICE 모드면 STT 시작, VIDEO 모드면 녹화 시작 후
+  /// 10초 뒤 _stopListening/_stopVideoRecording 을 호출합니다.
+  void _startSession() {
+    if (isVoiceMode) {
+      _startListening();
+      Future.delayed(const Duration(seconds: 8), _stopListening);
+    } else {
+      _startVideoRecording();
+      Future.delayed(const Duration(seconds: 8), _stopVideoRecording);
+    }
+  }
+
+  void _goToResult({
+  required String originalText,
+  required String userText,
+  required bool isVoiceMode,
+  String? aiGuideAsset,
+}) {
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ResultScreen(
+        category: widget.category,
+        originalText: originalText,
+        userText: userText,
+        isVoiceMode: isVoiceMode,
+        aiGuideAsset: aiGuideAsset,
+      ),
+    ),
+  );
+}
 
   @override
   void dispose() {
@@ -145,31 +215,18 @@ class _PracticeScreenState extends State<PracticeScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          GestureDetector(
-            onTapDown: (_) {
-              if (isVoiceMode) {
-                _startListening();
-              } else {
-                _startVideoRecording();
-              }
-            },
-            onTapUp: (_) {
-              if (isVoiceMode) {
-                _stopListening();
-              } else {
-                _stopVideoRecording();
-              }
-            },
-            child: CircleAvatar(
-              radius: 48,
-              backgroundColor: Colors.grey.shade200,
-              child: Icon(
-                isVoiceMode ? Icons.mic : Icons.videocam,
-                size: 40,
-                color: Colors.black54,
-              ),
-            ),
-          ),
+           GestureDetector(
+   onTap: _startSession,  // ← 여기 한 줄로 대체!
+   child: CircleAvatar(
+     radius: 48,
+     backgroundColor: Colors.grey.shade200,
+     child: Icon(
+       isVoiceMode ? Icons.mic : Icons.videocam,
+       size: 40,
+       color: Colors.black54,
+     ),
+   ),
+),
           const SizedBox(height: 28),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 24),
