@@ -35,6 +35,7 @@ dependencies:
   camera: ^0.10.0             # 영상 녹화
   video_player: ^2.5.1        # 결과 영상 재생
   path_provider: ^2.0.15    # 파일 경로 제공
+  permission_handler: ^11.3.0
 
   
 

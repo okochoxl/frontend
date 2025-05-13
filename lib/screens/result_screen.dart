@@ -6,8 +6,8 @@ import 'package:video_player/video_player.dart';
 class ResultScreen extends StatefulWidget {
   final String category;
   final String originalText;
-  final String userText;      // VOICE 모드: 텍스트 / VIDEO 모드: 파일 경로
-  final bool isVoiceMode;     // true: 음성 모드, false: 영상 모드
+  final String userText; // VOICE 모드: 텍스트 / VIDEO 모드: 파일 경로
+  final bool isVoiceMode; // true: 음성 모드, false: 영상 모드
   final String? aiGuideAsset; // AI 가이드용 비디오(asset 경로)
 
   const ResultScreen({
@@ -29,17 +29,21 @@ class _ResultScreenState extends State<ResultScreen> {
 
   // ① AI 솔루션 문자열을 저장할 상태 변수
   String? _aiSolution;
-  bool   _loadingAI = false;
+  bool _loadingAI = false;
 
   @override
   void initState() {
     super.initState();
 
-
     if (!widget.isVoiceMode) {
       // 사용자가 녹화한 비디오 로드
-      _userVideoCtr = VideoPlayerController.file(File(widget.userText))
-        ..initialize().then((_) => setState(() {}));
+      _userVideoCtr =
+          VideoPlayerController.file(File(widget.userText))
+            ..setLooping(true)
+            ..initialize().then((_) {
+              setState(() {});
+              _userVideoCtr!.play(); // ✅ 자동 재생!
+            });
       // AI 가이드 비디오 로드 (asset)
       if (widget.aiGuideAsset != null) {
         _aiVideoCtr = VideoPlayerController.asset(widget.aiGuideAsset!)
@@ -79,9 +83,8 @@ class _ResultScreenState extends State<ResultScreen> {
     // 지금은 더미 리턴
     await Future.delayed(const Duration(milliseconds: 500));
     return '“Su” → “So”: Try making your mouth shape a bit smaller.\n'
-           '“Seo” → “Sa”: Open your mouth wider and roll your tongue slightly.';
+        '“Seo” → “Sa”: Open your mouth wider and roll your tongue slightly.';
   }
-
 
   Future<void> _fetchAISolution() async {
     setState(() => _loadingAI = true);
@@ -91,7 +94,7 @@ class _ResultScreenState extends State<ResultScreen> {
     );
     setState(() {
       _aiSolution = advice;
-      _loadingAI  = false;
+      _loadingAI = false;
     });
   }
 
@@ -119,8 +122,9 @@ class _ResultScreenState extends State<ResultScreen> {
             Center(
               child: CircleAvatar(
                 radius: 40,
-                backgroundImage:
-                    AssetImage('assets/images/avatar_placeholder.png'),
+                backgroundImage: AssetImage(
+                  'assets/images/avatar_placeholder.png',
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -164,7 +168,6 @@ class _ResultScreenState extends State<ResultScreen> {
             ),
             const SizedBox(height: 8),
 
-            
             // ④ 로딩 중이면 스피너, 완료되면 박스에 텍스트
             if (_loadingAI)
               Center(child: CircularProgressIndicator())
@@ -205,16 +208,20 @@ class _ResultScreenState extends State<ResultScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF5D3FD3),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 40, vertical: 16),
+                    horizontal: 40,
+                    vertical: 16,
+                  ),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                 ),
                 child: const Text(
                   'Back to Menu',
                   style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -225,43 +232,40 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Widget _tag(String text) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.deepPurple,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(text, style: const TextStyle(color: Colors.white)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(
+      color: Colors.deepPurple,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(text, style: const TextStyle(color: Colors.white)),
+  );
 
   Widget _boxedText(String t) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(t, style: const TextStyle(fontSize: 14)),
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    decoration: BoxDecoration(
+      border: Border.all(color: Colors.grey.shade300),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(t, style: const TextStyle(fontSize: 14)),
+  );
 
   Widget _buildPlaceholder() => Container(
-        height: 200,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(Color(0xFFE7E0F8)),
-          ),
-        ),
-      );
+    height: 200,
+    width: double.infinity,
+    decoration: BoxDecoration(
+      border: Border.all(color: Colors.grey.shade300),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: const Center(
+      child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation(Color(0xFFE7E0F8)),
+      ),
+    ),
+  );
 
   Widget _buildVideoPlayer(VideoPlayerController? ctr) {
     if (ctr == null || !ctr.value.isInitialized) return _buildPlaceholder();
-    return AspectRatio(
-      aspectRatio: ctr.value.aspectRatio,
-      child: VideoPlayer(ctr),
-    );
+    return AspectRatio(aspectRatio: 16 / 9, child: VideoPlayer(ctr));
   }
 }
