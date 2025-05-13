@@ -27,9 +27,15 @@ class _ResultScreenState extends State<ResultScreen> {
   VideoPlayerController? _userVideoCtr;
   VideoPlayerController? _aiVideoCtr;
 
+  // ① AI 솔루션 문자열을 저장할 상태 변수
+  String? _aiSolution;
+  bool   _loadingAI = false;
+
   @override
   void initState() {
     super.initState();
+
+
     if (!widget.isVoiceMode) {
       // 사용자가 녹화한 비디오 로드
       _userVideoCtr = VideoPlayerController.file(File(widget.userText))
@@ -40,6 +46,11 @@ class _ResultScreenState extends State<ResultScreen> {
           ..initialize().then((_) => setState(() {}));
       }
     }
+
+    // ② VOICE 모드일 때 AI 솔루션을 호출
+    if (widget.isVoiceMode) {
+      _fetchAISolution();
+    }
   }
 
   @override
@@ -47,6 +58,41 @@ class _ResultScreenState extends State<ResultScreen> {
     _userVideoCtr?.dispose();
     _aiVideoCtr?.dispose();
     super.dispose();
+  }
+
+  // ③ Gemini 호출 부분 (플레이스홀더)
+  Future<String> fetchPronunciationAdvice(String original, String user) async {
+    // TODO: 여기에 Gemini API 클라이언트를 이용한 실제 호출 코드 작성
+    //
+    // 예시(의사코드)👇
+    // final client = GeminiClient(apiKey: 'YOUR_API_KEY');
+    // final resp = await client.chat(
+    //   system: '당신은 발음 교정 전문 AI입니다.',
+    //   user: '''
+    //     Original: "$original"
+    //     UserPronunciation: "$user"
+    //     Please give me step-by-step advice on how to improve the user's pronunciation.
+    //   '''
+    // );
+    // return resp.choices.first.text;
+    //
+    // 지금은 더미 리턴
+    await Future.delayed(const Duration(milliseconds: 500));
+    return '“Su” → “So”: Try making your mouth shape a bit smaller.\n'
+           '“Seo” → “Sa”: Open your mouth wider and roll your tongue slightly.';
+  }
+
+
+  Future<void> _fetchAISolution() async {
+    setState(() => _loadingAI = true);
+    final advice = await fetchPronunciationAdvice(
+      widget.originalText,
+      widget.userText,
+    );
+    setState(() {
+      _aiSolution = advice;
+      _loadingAI  = false;
+    });
   }
 
   @override
@@ -117,10 +163,15 @@ class _ResultScreenState extends State<ResultScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            _boxedText(
-              '“Su” → “So”: Try making your mouth shape a bit smaller.\n'
-              '“Seo” → “Sa”: Open your mouth wider and roll your tongue slightly.',
-            ),
+
+            
+            // ④ 로딩 중이면 스피너, 완료되면 박스에 텍스트
+            if (_loadingAI)
+              Center(child: CircularProgressIndicator())
+            else if (_aiSolution != null)
+              _boxedText(_aiSolution!)
+            else
+              _boxedText('No advice available.'),
 
             const SizedBox(height: 24),
             // VOICE vs VIDEO 분기

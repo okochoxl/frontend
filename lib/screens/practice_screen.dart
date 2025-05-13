@@ -21,6 +21,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   late stt.SpeechToText _speech;
   bool _speechEnabled = false;
   String _lastWords = '';
+  String _localeId = 'en_US';  // 기본 영어(미국)
 
   // Camera
   CameraController? _cameraController;
@@ -52,7 +53,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
   Future<void> _initSpeech() async {
     _speech = stt.SpeechToText();
+
     _speechEnabled = await _speech.initialize();
+   // (선택) 사용 가능한 로케일 목록 중 en_US 가 있으면 그걸 쓰도록 설정
+    final locales = await _speech.locales();
+    final english = locales.firstWhere(
+    (l) => l.localeId.startsWith('en'),
+    orElse: () => locales.first,
+    );
+    _localeId = english.localeId;
     setState(() {});
   }
 
@@ -85,12 +94,14 @@ Future<void> _startVideoRecording() async {
 void _startListening() async {
   if (!_speechEnabled) return;
   await _speech.listen(
-    onResult: (val) {
-      setState(() {
-        _lastWords = val.recognizedWords;  // 여기에 인식된 문장(텍스트)이 들어옴
-      });
-    },
-  );
+  localeId: _localeId,
+  onDevice: true,           // ← 여기로 이동
+  onResult: (val) {
+    setState(() {
+    _lastWords = val.recognizedWords;
+    });
+  },
+);
 }
   void _stopListening() async {
   await _speech.stop();
