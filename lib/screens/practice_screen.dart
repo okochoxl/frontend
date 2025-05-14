@@ -179,6 +179,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
               category: widget.category,
               originalText: _prompt,
               userText: file.path,
+              sttResult: _lastWords,
               isVoiceMode: false,
               aiGuideAsset: 'assets/videos/ai_guide.mp4',
             ),

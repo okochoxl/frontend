@@ -7,6 +7,7 @@ class ResultScreen extends StatefulWidget {
   final String category;
   final String originalText;
   final String userText; // VOICE 모드: 텍스트 / VIDEO 모드: 파일 경로
+  final String? sttResult; // 텍스트 전달
   final bool isVoiceMode; // true: 음성 모드, false: 영상 모드
   final String? aiGuideAsset; // AI 가이드용 비디오(asset 경로)
 
@@ -17,6 +18,7 @@ class ResultScreen extends StatefulWidget {
     required this.userText,
     required this.isVoiceMode,
     this.aiGuideAsset,
+    this.sttResult,
   }) : super(key: key);
 
   @override
@@ -153,7 +155,9 @@ class _ResultScreenState extends State<ResultScreen> {
                   child: Text(
                     widget.isVoiceMode
                         ? (widget.userText.isEmpty ? '-' : widget.userText)
-                        : '[See your video below]',
+                        : (widget.sttResult?.isNotEmpty == true
+                            ? widget.sttResult!
+                            : '[No STT result]'),
                     style: const TextStyle(fontSize: 14),
                   ),
                 ),
